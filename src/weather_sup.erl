@@ -41,7 +41,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([]) ->
     Children = [{httpc, {httpc,start_link,[]},permanent,2000,worker,[httpc]},
-                {twitter_status, {twitter_status,start_link,[]},permanent,2000,worker,[twitter_status]}
+                {twitter_status, {twitter_status,start_link,[]},permanent,2000,worker,[twitter_status]},
                 {wx_sup,{wx_sup,start_link,[]},permanent,2000,supervisor,[wx_sup]}],
                  
     {ok,{{one_for_all,2,3}, Children}}.
