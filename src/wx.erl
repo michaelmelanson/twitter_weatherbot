@@ -32,9 +32,7 @@
 %% Description: Starts the server
 %%--------------------------------------------------------------------
 start_link(Site, UpdateInterval) ->
-    Value = gen_server:start_link(?MODULE, [Site, UpdateInterval], []),
-    io:format("Server ~p returning ~p~n", [Site, Value]),
-    Value.
+    gen_server:start_link(?MODULE, [Site, UpdateInterval], []).
 
 %%====================================================================
 %% gen_server callbacks
@@ -48,7 +46,6 @@ start_link(Site, UpdateInterval) ->
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
 init([Site, UpdateInterval]) ->
-    io:format("Weather server started for ~p~n", [Site]),
     gen_server:cast(self(), update), % Start the ball rolling!
     {ok, #state{site=Site, interval=UpdateInterval}}.
 
