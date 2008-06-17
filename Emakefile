@@ -10,4 +10,5 @@
  [{outdir, "ebin"},
   {i, "include"},
   {i, "/usr/local/lib/erlang/lib/xmerl-1.1.4/include/"},
+  {i, "/usr/lib/erlang/lib/xmerl-1.1.4/include/"},
   {i, "lib/erlang_twitter"}]}.
