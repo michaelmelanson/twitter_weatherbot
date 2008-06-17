@@ -50,7 +50,11 @@ init([]) ->
                             {Site, {wx, start_link, [Site, 1000*60*5]},
                              permanent, 2000, worker, [wx]}
                          end, Sites),
-    {ok,{{one_for_all,100,3}, Children}}.
+    case supervisor:check_childspecs(Children) of
+        ok -> {ok,{{one_for_all,100,3}, Children}};
+        {error, Error} ->
+            io:format("Invalid child specifications: ~p~n", [Error])
+    end.
 
 %%====================================================================
 %% Internal functions
