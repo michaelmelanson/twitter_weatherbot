@@ -47,6 +47,7 @@ start_link(Site, UpdateInterval) ->
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
 init([Site, UpdateInterval]) ->
+    io:format("Weather server started for ~p~n", [Site]),
     gen_server:cast(self(), update), % Start the ball rolling!
     {ok, #state{site=Site, interval=UpdateInterval}}.
 
