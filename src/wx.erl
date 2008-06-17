@@ -85,7 +85,7 @@ handle_cast(update, State) ->
             ETag
     catch
         Error -> io:format("Caught error: ~p~n", [Error])
-    end
+    end,
     
     set_timer(State#state.interval),
     {noreply, State#state{etag=NewETag}}.
