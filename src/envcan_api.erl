@@ -41,7 +41,11 @@ get(Site, ETag) ->
             {ok, SiteData, get_etag(Headers)};
         
         {{_, 304, _}, _Headers, _Body} ->
-            unmodified
+            unmodified;
+            
+        Other ->
+            io:format("Unknown HTTP return ~p calling ~p~n", [Other, Site]),
+            {error, Other}
     end.
     
 list() ->
