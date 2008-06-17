@@ -32,7 +32,8 @@
 %% Description: Starts the server
 %%--------------------------------------------------------------------
 start_link(Site, UpdateInterval) ->
-    gen_server:start_link(?MODULE, [Site, UpdateInterval], []).
+    Value = gen_server:start_link(?MODULE, [Site, UpdateInterval], []),
+    io:format("Server ~p returning ~p~n", [Site, Value]).
 
 %%====================================================================
 %% gen_server callbacks
@@ -72,9 +73,6 @@ handle_cast(update, State) ->
     Site = State#state.site,
     NewETag = try envcan_api:get(State#state.site, State#state.etag) of
         unmodified ->
-            io:format("~s, ~s(~s): No update", [Site#site.city,
-                                                Site#site.province,
-                                                Site#site.language]),
             State#state.etag;
         
         {ok, SiteData, ETag} ->
