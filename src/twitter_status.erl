@@ -83,9 +83,9 @@ handle_call(_Request, _From, State) ->
 handle_cast({weather_update, City, Province, Message}, State) ->
     Status = City ++ ", " ++ Province ++ ": " ++ Message,
     
-    io:format("Would update Twitter: ~p~n", [Status]),
-    %twitter_client:call(?TWITTER_USERNAME, status_update, 
-    %                    [{"status", Status}]), 
+    io:format("Updating Twitter: ~p~n", [Status]),
+    twitter_client:call(?TWITTER_USERNAME, status_update, 
+                        [{"status", Status}]), 
     {noreply, State}.
 
 %%--------------------------------------------------------------------
