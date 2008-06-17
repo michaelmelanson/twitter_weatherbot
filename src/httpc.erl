@@ -31,16 +31,7 @@ start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 request(Method, Request) ->
-    try gen_server:call(?SERVER, {request, Method, Request}, infinity) of
-        Reply -> Reply
-    catch
-        Error ->
-            io:format("Error calling httpc... trying again in a jiffy~n"),
-            receive
-            after 500 ->
-                request(Method, Request)
-            end
-    end.
+    gen_server:call(?SERVER, {request, Method, Request}, infinity).
 
 %%====================================================================
 %% gen_server callbacks
