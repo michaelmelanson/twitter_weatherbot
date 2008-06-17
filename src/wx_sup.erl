@@ -51,7 +51,7 @@ init([]) ->
                              permanent, 2000, worker, [wx]}
                          end, Sites),
     case supervisor:check_childspecs(Children) of
-        ok -> {ok,{{one_for_all,100,3}, Children}};
+        ok -> {ok,{{one_for_one,100,3}, Children}};
         {error, Error} ->
             io:format("Invalid child specifications: ~p~n", [Error]),
             {error, Error}
