@@ -30,15 +30,21 @@ get(Site, ETag) ->
         _ -> {make_data_uri(Site), ?HEADERS ++ [{"If-None-Match", ETag}]}
     end,
     
+    io:format("Requesting... "),
     {ok, Result} = httpc:request(get, Request),
     
     case Result of
         {{_, 200, _}, Headers, Body} ->
+            io:format("Parsing... "),
             {Parsed, []} = xmerl_scan:string(Body),
+            io:format("Extracting... "),
             Content = Parsed#xmlElement.content,
-            {ok, parse_sitedata(Content), get_etag(Headers)};
+            SiteData = parse_sitedata(Content),
+            io:format("Done.~n"),
+            {ok, SiteData, get_etag(Headers)};
         
         {{_, 304, _}, _Headers, _Body} ->
+            io:format("Unmodified.~n"),
             unmodified
     end.
     
