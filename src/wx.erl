@@ -33,7 +33,8 @@
 %%--------------------------------------------------------------------
 start_link(Site, UpdateInterval) ->
     Value = gen_server:start_link(?MODULE, [Site, UpdateInterval], []),
-    io:format("Server ~p returning ~p~n", [Site, Value]).
+    io:format("Server ~p returning ~p~n", [Site, Value]),
+    Value.
 
 %%====================================================================
 %% gen_server callbacks
