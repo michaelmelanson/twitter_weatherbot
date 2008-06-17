@@ -70,8 +70,7 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast(update, State) ->
     Site = State#state.site,
-    
-    NewETag = case envcan_api:get(State#state.site, State#state.etag) of
+    NewETag = try envcan_api:get(State#state.site, State#state.etag) of
         unmodified ->
             io:format("~s, ~s(~s): No update", [Site#site.city,
                                                 Site#site.province,
@@ -84,7 +83,9 @@ handle_cast(update, State) ->
                                                 Site#site.language]),
             process_data(Site, SiteData),
             ETag
-    end,
+    catch
+        Error -> io:format("Caught error: ~p~n", [Error])
+    end
     
     set_timer(State#state.interval),
     {noreply, State#state{etag=NewETag}}.
