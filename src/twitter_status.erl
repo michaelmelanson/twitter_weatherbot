@@ -50,12 +50,14 @@ weather_update(City, Province, Message) ->
 init([]) ->
     twitter_client:start(?TWITTER_USERNAME, ?TWITTER_PASSWORD),
     
+    io:format("Authenticating with Twitter..."),
     case twitter_client:call(?TWITTER_USERNAME, account_verify_credentials) of
         true ->
+            io:format("Success!~n"),
             {ok, #state{}};
             
         false ->
-            io:format("Authentication with Twitter failed~n"),
+            io:format("Failed!~n"),
             {stop, twitter_authentication_failed}
     end.
     
