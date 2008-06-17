@@ -20,8 +20,8 @@
 
 -define(SERVER, ?MODULE).
 
--define(TWITTER_USERNAME, "XXX").
--define(TWITTER_PASSWORD, "YYY").
+-define(TWITTER_USERNAME, "wx_canada").
+-define(TWITTER_PASSWORD, "pleasedonthackme").
 
 %%====================================================================
 %% API
@@ -49,9 +49,16 @@ weather_update(City, Province, Message) ->
 %%--------------------------------------------------------------------
 init([]) ->
     twitter_client:start(?TWITTER_USERNAME, ?TWITTER_PASSWORD),
-    true = twitter_client:call(?TWITTER_USERNAME, account_verify_credentials),
-    {ok, #state{}}.
-
+    
+    case twitter_client:call(?TWITTER_USERNAME, account_verify_credentials) of
+        true ->
+            {ok, #state{}};
+            
+        false ->
+            io:format("Authentication with Twitter failed~n"),
+            {stop, twitter_authentication_failed}
+    end.
+    
 %%--------------------------------------------------------------------
 %% Function: handle_call(Request, From, State) -> {reply, Reply, State} |
 %%                                      {reply, Reply, State, Timeout} |
