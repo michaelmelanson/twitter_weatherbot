@@ -44,7 +44,7 @@ init([]) ->
                 {wx_sup,{wx_sup,start_link,[]},permanent,2000,supervisor,[wx_sup]},
                 {twitter_status, {twitter_status,start_link,[]},permanent,2000,worker,[twitter_status]}],
                  
-    {ok,{{one_for_all,0,1}, Children}}.
+    {ok,{{one_for_all,2,3}, Children}}.
 
 %%====================================================================
 %% Internal functions
