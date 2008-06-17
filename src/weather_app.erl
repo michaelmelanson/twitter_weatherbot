@@ -19,6 +19,7 @@
 %% Description: Starts the bot
 %%--------------------------------------------------------------------
 start(normal, []) ->
+    application:start(inets),
     {ok, _Pid} = weather_sup:start_link().
     
 stop(_) ->

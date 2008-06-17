@@ -54,7 +54,6 @@ request(Method, Request) ->
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
 init([]) ->
-    application:start(inets),
     {ok, #state{}}.
 
 %%--------------------------------------------------------------------
