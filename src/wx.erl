@@ -74,7 +74,7 @@ handle_cast(update, State) ->
     {NewETag, NewData} =
         case envcan_api:get(State#state.site, State#state.etag) of
             unmodified ->
-                {State#state.etag, State#site.last_sitedata};
+                {State#state.etag, State#state.last_sitedata};
         
             {ok, SiteData, ETag} ->
                 process_data(Site, SiteData),
