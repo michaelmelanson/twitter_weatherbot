@@ -123,7 +123,7 @@ process_data(Site, SiteData) ->
     
     lists:foreach(fun(#event{description=Desc}) ->
                       % Don't include "CONTINUED" messages
-                      case string:str(Desc, "CONTINUED") =/= 0 or string:str(Desc, "MAINTENUE") =/= 0 of
+                      case (string:str(Desc, "CONTINUED") =/= 0) or (string:str(Desc, "MAINTENUE") =/= 0) of
                           0 -> ok;
                           _ ->
                               twitter_status:weather_update(Site#site.city,
