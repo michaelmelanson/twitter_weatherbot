@@ -30,17 +30,15 @@ get(Site, ETag) ->
         _ -> {make_data_uri(Site), ?HEADERS ++ [{"If-None-Match", ETag}]}
     end,
     
-    {ok, Result} = httpc:request(get, Request),
-    
-    case Result of
-        {{_, 200, _}, Headers, Body} ->
+    case http_master:request(Request) of
+        {ok, {{_, 200, _}, Headers, Body}} ->
             {Parsed, []} = xmerl_scan:string(Body),
 
             Content = Parsed#xmlElement.content,
             SiteData = parse_sitedata(Content),
             {ok, SiteData, get_etag(Headers)};
         
-        {{_, 304, _}, _Headers, _Body} ->
+        {ok, {{_, 304, _}, _Headers, _Body}} ->
             unmodified;
             
         Other ->
@@ -50,7 +48,7 @@ get(Site, ETag) ->
     
 list() ->
     Request = {?BASE_URL ++ "/siteList.xml", []},
-    {ok, Result} = httpc:request(get, Request),
+    {ok, Result} = http_master:request(Request),
     case Result of
         {{_, 200, _}, _Headers, Body} ->
             {Parsed, []} = xmerl_scan:string(Body),
@@ -310,6 +308,9 @@ parse_conditions(Xml) ->
 
         (#xmlElement{name=wind, content=Value}, Acc) ->
             Acc#conditions{wind=parse_wind(Value)};
+            
+        (#xmlElement{name=windChill, content=[#xmlText{value=Value}]}, Acc) ->
+            Acc#conditions{windChill=Value};
             
         (#xmlText{}, Acc) -> Acc
     end,

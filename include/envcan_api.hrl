@@ -39,7 +39,8 @@
                      pressure,
                      visibility,
                      relativeHumidity,
-                     wind}).
+                     wind,
+                     windChill}).
 -record(station, {code, lat, lon, name}).
 -record(wind, {speed, gust, direction, bearing}).
 

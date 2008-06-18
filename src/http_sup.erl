@@ -1,16 +1,16 @@
 %%%-------------------------------------------------------------------
-%%% File    : weather_sup.erl
+%%% File    : http_sup.erl
 %%% Author  : Michael Melanson
-%%% Description : Top supervisor
+%%% Description : 
 %%%
-%%% Created : 2008-06-16 by Michael Melanson
+%%% Created : 2008-06-17 by Michael Melanson
 %%%-------------------------------------------------------------------
--module(weather_sup).
+-module(http_sup).
 
 -behaviour(supervisor).
 
 %% API
--export([start_link/0]).
+-export([start_link/1]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -24,8 +24,8 @@
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the supervisor
 %%--------------------------------------------------------------------
-start_link() ->
-    supervisor:start_link({local, ?SERVER}, ?MODULE, []).
+start_link(Workers) ->
+    supervisor:start_link({local, ?SERVER}, ?MODULE, Workers).
 
 %%====================================================================
 %% Supervisor callbacks
@@ -39,12 +39,15 @@ start_link() ->
 %% to find out about restart strategy, maximum restart frequency and child 
 %% specifications.
 %%--------------------------------------------------------------------
-init([]) ->
-    Children = [{http_sup, {http_sup,start_link,[5]},permanent,2000,supervisor,[http_sup]},
-                {twitter_status, {twitter_status,start_link,[]},permanent,2000,worker,[twitter_status]},
-                {wx_sup,{wx_sup,start_link,[]},permanent,2000,supervisor,[wx_sup]}],
-                 
-    {ok,{{one_for_all,2,3}, Children}}.
+init(Workers) ->
+    Master = {http_master, {http_master, start_link, []},
+              permanent,2000,worker,[http_master]},
+              
+    Children = lists:map(fun(X) ->
+                             {list_to_atom(lists:concat(["httpc_",X])),{httpc,start_link,[X]},
+                              permanent,2000,worker,[httpc]}
+                         end, lists:seq(1, Workers)),
+    {ok,{{one_for_all,1,1}, [Master] ++ Children}}.
 
 %%====================================================================
 %% Internal functions

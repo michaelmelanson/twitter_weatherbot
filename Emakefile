@@ -3,6 +3,8 @@
   "src/wx",
   "src/wx_sup",
   "src/httpc",
+  "src/http_master",
+  "src/http_sup",
   "src/envcan_api",
   "lib/erlang_twitter/twitter_client",
   "src/twitter_status"],

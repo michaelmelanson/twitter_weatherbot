@@ -10,7 +10,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, request/2]).
+-export([start_link/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -27,11 +27,9 @@
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
 %%--------------------------------------------------------------------
-start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
-
-request(Method, Request) ->
-    gen_server:call(?SERVER, {request, Method, Request}, infinity).
+start_link(X) ->
+    Name = list_to_atom(lists:concat([?MODULE, "_", X])),
+    gen_server:start_link({local, Name}, ?MODULE, [], []).
 
 %%====================================================================
 %% gen_server callbacks
@@ -45,6 +43,7 @@ request(Method, Request) ->
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
 init([]) ->
+    http_master:available(),
     {ok, #state{}}.
 
 %%--------------------------------------------------------------------
@@ -56,8 +55,8 @@ init([]) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
-handle_call({request, Method, Request}, _From, State) ->
-    {reply, http:request(Method, Request, [], []), State}.
+handle_call(_Request, _From, State) ->
+    {reply, ok, State}.
 
 %%--------------------------------------------------------------------
 %% Function: handle_cast(Msg, State) -> {noreply, State} |
@@ -65,7 +64,10 @@ handle_call({request, Method, Request}, _From, State) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling cast messages
 %%--------------------------------------------------------------------
-handle_cast(_Msg, State) ->
+handle_cast({Task, From}, State) ->
+    Result = http:request(get, Task, [], []),
+    gen_server:reply(From, Result),
+    http_master:available(),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
