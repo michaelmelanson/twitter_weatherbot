@@ -18,7 +18,8 @@
 
 -record(state, {site,
                 interval,
-                etag}).
+                etag,
+                last_sitedata}).
 
 -include("envcan_api.hrl").
 
@@ -70,20 +71,19 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast(update, State) ->
     Site = State#state.site,
-    NewETag = try envcan_api:get(State#state.site, State#state.etag) of
-        unmodified ->
-            State#state.etag;
+    {NewETag, NewData} =
+        case envcan_api:get(State#state.site, State#state.etag) of
+            unmodified ->
+                {State#state.etag, State#site.last_sitedata};
         
-        {ok, SiteData, ETag} ->
-            process_data(Site, SiteData),
-            ETag
-    catch
-        Error -> io:format("Caught error: ~p~n", [Error])
-    end,
+            {ok, SiteData, ETag} ->
+                process_data(Site, SiteData),
+                {ETag, SiteData}
+        end,
     
     set_timer(State#state.interval),
     erlang:garbage_collect(),
-    {noreply, State#state{etag=NewETag}}.
+    {noreply, State#state{etag=NewETag,last_sitedata=NewData}}.
 
 %%--------------------------------------------------------------------
 %% Function: handle_info(Info, State) -> {noreply, State} |
