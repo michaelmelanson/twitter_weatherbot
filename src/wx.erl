@@ -82,6 +82,7 @@ handle_cast(update, State) ->
     end,
     
     set_timer(State#state.interval),
+    erlang:garbage_collect(),
     {noreply, State#state{etag=NewETag}}.
 
 %%--------------------------------------------------------------------
