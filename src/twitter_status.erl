@@ -76,10 +76,24 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast({weather_update, City, Province, Message}, State) ->
     Status = City ++ ", " ++ Province ++ ": " ++ Message,
-    
+
+    Delay = twitter_client:delay(),
+    case Delay of
+	0 -> ok; % no throttling needed
+	_ ->
+	    io:format("Throttling: Waiting ~p seconds to update Twitter.~n",
+		      [Delay]),
+	    timer:sleep(Delay*1000)
+    end,
+
     io:format("Updating Twitter: ~p~n", [Status]),
-    twitter_client:call(?TWITTER_USERNAME, status_update, 
-                        [{"status", Status}]), 
+    Reply = twitter_client:call(?TWITTER_USERNAME, status_update, 
+				[{"status", Status}]), 
+    case Reply of
+	[#status{}] -> io:format("Update was successful~n");
+	_ -> io:format("Update failed: ~p~n", [Reply])
+    end,
+
     {noreply, State}.
 
 %%--------------------------------------------------------------------
