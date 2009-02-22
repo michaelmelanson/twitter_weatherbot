@@ -18,6 +18,8 @@
 
 -record(state, {}).
 
+-include("twitter_client.hrl").
+
 -define(SERVER, ?MODULE).
 
 -define(TWITTER_USERNAME, "wx_canada").
@@ -48,18 +50,10 @@ weather_update(City, Province, Message) ->
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
 init([]) ->
-    twitter_client:start(?TWITTER_USERNAME, ?TWITTER_PASSWORD),
+    twitter_client:start(),
+    twitter_client:add_session(?TWITTER_USERNAME, ?TWITTER_PASSWORD),
     
-    io:format("Authenticating with Twitter..."),
-    case twitter_client:call(?TWITTER_USERNAME, account_verify_credentials) of
-        true ->
-            io:format("Success!~n"),
-            {ok, #state{}};
-            
-        false ->
-            io:format("Failed!~n"),
-            {stop, twitter_authentication_failed}
-    end.
+    {ok, #state{}}.
     
 %%--------------------------------------------------------------------
 %% Function: handle_call(Request, From, State) -> {reply, Reply, State} |
