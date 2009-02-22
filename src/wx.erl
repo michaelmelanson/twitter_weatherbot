@@ -18,8 +18,7 @@
 
 -record(state, {site,
                 interval,
-                etag,
-                last_sitedata}).
+                etag}).
 
 -include("envcan_api.hrl").
 
@@ -71,19 +70,35 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast(update, State) ->
     Site = State#state.site,
-    {NewETag, NewData} =
-        case envcan_api:get(State#state.site, State#state.etag) of
+    NewETag =
+	try envcan_api:get(State#state.site, State#state.etag) of
             unmodified ->
-                {State#state.etag, State#state.last_sitedata};
+                State#state.etag;
         
             {ok, SiteData, ETag} ->
-                process_data(Site, SiteData),
-                {ETag, SiteData}
+                if State#state.etag =/= undefined ->
+			io:format("~s, ~s: weather data changed~n",
+				  [Site#site.city, Site#site.province]),
+			process_data(Site, SiteData);
+		   true ->
+			io:format("~s, ~s: first run successful~n",
+				  [Site#site.city, Site#site.province]),
+			ok
+		end,
+                ETag
+	catch
+	    _ ->
+		WarningText = "Error updating this city/" ++
+		              "Erreur de mise à jour de cette ville",
+		twitter_status:weather_update(Site#site.city,
+					      Site#site.province,
+					      WarningText),
+		State#state.etag
         end,
     
     set_timer(State#state.interval),
     erlang:garbage_collect(),
-    {noreply, State#state{etag=NewETag,last_sitedata=NewData}}.
+    {noreply, State#state{etag=NewETag}}.
 
 %%--------------------------------------------------------------------
 %% Function: handle_info(Info, State) -> {noreply, State} |
