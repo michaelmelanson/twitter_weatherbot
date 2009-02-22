@@ -134,8 +134,7 @@ set_timer(Interval) ->
     
 process_data(Site, SiteData) ->
     Events = SiteData#sitedata.events,
-    AllEvents = Events#events.watches ++ Events#events.warnings ++ Events#events.ended,
-    
+    AllEvents = Events#events.watches ++ Events#events.warnings ++ Events#events.ended,    
     
     lists:foreach(fun(#event{description=Desc}) ->
                       % Don't include "CONTINUED" messages
