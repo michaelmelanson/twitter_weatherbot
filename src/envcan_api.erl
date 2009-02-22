@@ -279,10 +279,15 @@ parse_conditions(Xml) ->
                 [#xmlText{value=Value}] -> Acc#conditions{summary=Value}
             end;
         
-        (#xmlElement{name=temperature, content=[#xmlText{value=Value}]}, Acc) ->
+        (#xmlElement{name=temperature,
+		     attributes=[#xmlAttribute{name=unitType},
+				 #xmlAttribute{name=units, value=Value}]}, Acc) ->
             Acc#conditions{temperature=Value};
             
-        (#xmlElement{name=dewpoint, content=[#xmlText{value=Value}]}, Acc) ->
+        (#xmlElement{name=dewpoint,
+ 		     attributes=[#xmlAttribute{name=unitType},
+				 #xmlAttribute{name=units, value=Value}]}, Acc) ->
+
             Acc#conditions{dewpoint=Value};
 
         (#xmlElement{name=humidex, content=[#xmlText{value=Value}]}, Acc) ->
@@ -446,7 +451,10 @@ parse_forecast(Xml) ->
             
         (#xmlElement{name=winds, content=Content}, Acc) ->
             Acc#forecast{winds=parse_winds(Content)};
-            
+
+        (#xmlElement{name=windChill, content=[#xmlText{value=Value}|_]}, Acc) ->
+            Acc#forecast{windChill=Value};            
+
         (#xmlElement{name=precipitation, content=Content}, Acc) ->
             Acc#forecast{precipitation=parse_precipitation(Content)};
             
@@ -468,6 +476,9 @@ parse_forecast(Xml) ->
             
         (#xmlElement{name=comfort, content=Content}, Acc) ->
             Acc#forecast{comfort=parse_comfort(Content)}; 
+
+        (#xmlElement{name=snowLevel, content=Content}, Acc) ->
+            Acc#forecast{snowLevel=parse_snowLevel(Content)};
             
         (#xmlText{}, Acc) -> Acc
     end,
@@ -576,12 +587,20 @@ parse_visibility(Xml) ->
             case Content of
                 [] -> Acc;
                 [#xmlText{},#xmlElement{name=textSummary, content=[#xmlText{value=Value}]}|_Tail] ->
-                    Acc ++ [Value]
+                    Acc#visibility{otherVisib=Value}
             end;
+
+        (#xmlElement{name=windVisib, content=Content}, Acc) ->
+            case Content of
+                [] -> Acc;
+                [#xmlText{},#xmlElement{name=textSummary, content=[#xmlText{value=Value}]}|_Tail] ->
+                    Acc#visibility{windVisib=Value}
+            end;
+
         (#xmlText{}, Acc) -> Acc
     end,
     
-    lists:foldl(F, [], Xml).
+    lists:foldl(F, #visibility{}, Xml).
 
 parse_comfort(Xml) ->
     F = fun
@@ -592,7 +611,18 @@ parse_comfort(Xml) ->
     end,
     
     lists:foldl(F, undefined, Xml).
+
+parse_snowLevel(Xml) ->    
+    F = fun
+	    (#xmlElement{name=textSummary, content=[#xmlText{value=Value}]}, _Acc) ->
+		Value;
+	     
+	    (#xmlText{}, Acc) -> Acc
+	end,
     
+    lists:foldl(F, undefined, Xml).
+
+
 parse_accumulation(Xml) ->
     F = fun
         (#xmlElement{name=name, content=[#xmlText{value=Value}]}, Acc) ->
