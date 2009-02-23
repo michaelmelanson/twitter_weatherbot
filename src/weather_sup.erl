@@ -40,7 +40,7 @@ start_link() ->
 %% specifications.
 %%--------------------------------------------------------------------
 init([]) ->
-    Children = [{http_sup, {http_sup,start_link,[5]},permanent,2000,supervisor,[http_sup]},
+    Children = [{http_sup, {http_sup,start_link,[2]},permanent,2000,supervisor,[http_sup]},
                 {twitter_status, {twitter_status,start_link,[]},permanent,2000,worker,[twitter_status]},
                 {wx_sup,{wx_sup,start_link,[]},permanent,2000,supervisor,[wx_sup]}],
                  
