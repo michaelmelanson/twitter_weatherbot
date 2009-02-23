@@ -14,8 +14,8 @@
 -include("xmerl.hrl").
 
 -define(BASE_URL, "http://dd.weatheroffice.ec.gc.ca/EC_sites/xml").
--define(HEADERS, [{"User-Agent", "Weatherbot"},
-                  {"X-Contact-Info", "Michael Melanson michael@codeshack.ca"}]).
+-define(HEADERS, [{"User-Agent", "Twitter: @wx_canada"},
+                  {"X-Contact-Info", "Michael Melanson <michael@michaelmelanson.net"}]).
 
 %%====================================================================
 %% API
