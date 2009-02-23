@@ -65,6 +65,10 @@ handle_call(_Request, _From, State) ->
 %% Description: Handling cast messages
 %%--------------------------------------------------------------------
 handle_cast({Task, From}, State) ->
+    http:set_options([{max_sessions, 2},
+		      {max_pipeline_length, 10},
+		      {pipeline_timeout, 5000}]),
+
     Result = http:request(get, Task, [], []),
     gen_server:reply(From, Result),
     http_master:available(),
