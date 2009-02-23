@@ -40,20 +40,21 @@ start_link() ->
 %% specifications.
 %%--------------------------------------------------------------------
 init([]) ->
-    io:format("~p: Retrieving site list from Environment Canada...~n",
-              [?MODULE]),
+    error_logger:info_msg("Retrieving site list from Environment Canada...~n"),
     {ok, Sites} = envcan_api:list(),
-    io:format("~p: There are a total of ~p sites~n", [?MODULE, length(Sites)]),
+    error_logger:info_msg("There are a total of ~p sites~n",
+			  [length(Sites)]),
 
 
     Children = lists:map(fun(Site) ->
-                            {Site, {wx, start_link, [Site, 1000*60*5]},
+                            {Site, {wx, start_link, [Site]},
                              permanent, 2000, worker, [wx]}
                          end, Sites),
     case supervisor:check_childspecs(Children) of
         ok -> {ok,{{one_for_one,100,3}, Children}};
         {error, Error} ->
-            io:format("Invalid child specifications: ~p~n", [Error]),
+            error_logger:info_msg("Invalid child specifications: ~p~n",
+				  [Error]),
             {error, Error}
     end.
 

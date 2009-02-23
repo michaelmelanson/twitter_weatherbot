@@ -10,19 +10,19 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/2]).
+-export([start_link/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--record(state, {site,
-                interval,
-                etag}).
+-record(state, {site, interval, events, etag}).
 
 -include("envcan_api.hrl").
 
 -define(SERVER, ?MODULE).
+-define(MIN_UPDATE_INTERVAL, 1000*60*5).  %% Five minutes
+-define(MAX_UPDATE_INTERVAL, 1000*60*60). %% One hour
 
 %%====================================================================
 %% API
@@ -31,8 +31,9 @@
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
 %%--------------------------------------------------------------------
-start_link(Site, UpdateInterval) ->
-    gen_server:start_link(?MODULE, [Site, UpdateInterval], []).
+start_link(Site) ->
+    Delay = random:uniform(?MAX_UPDATE_INTERVAL),
+    gen_server:start_link(?MODULE, [Site, Delay], []).
 
 %%====================================================================
 %% gen_server callbacks
@@ -45,9 +46,12 @@ start_link(Site, UpdateInterval) ->
 %%                         {stop, Reason}
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
-init([Site, UpdateInterval]) ->
-    gen_server:cast(self(), update), % Start the ball rolling!
-    {ok, #state{site=Site, interval=UpdateInterval}}.
+init([Site, Delay]) ->
+    process_flag(trap_exit, true),
+    error_logger:info_msg("~s, ~s: started~n",
+		      [Site#site.city, Site#site.province]),
+    set_timer(Delay),
+    {ok, #state{site=Site}}.
 
 %%--------------------------------------------------------------------
 %% Function: handle_call(Request, From, State) -> {reply, Reply, State} |
@@ -70,35 +74,68 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast(update, State) ->
     Site = State#state.site,
-    NewETag =
-	try envcan_api:get(State#state.site, State#state.etag) of
-            unmodified ->
-                State#state.etag;
+    WxPid = self(),
+
+    F = fun() ->
+		case envcan_api:get(State#state.site, State#state.etag) of
+		    unmodified -> WxPid ! unmodified;
         
-            {ok, SiteData, ETag} ->
-                if State#state.etag =/= undefined ->
-			io:format("~s, ~s: weather data changed~n",
-				  [Site#site.city, Site#site.province]),
-			process_data(Site, SiteData);
-		   true ->
-			io:format("~s, ~s: first run successful~n",
-				  [Site#site.city, Site#site.province]),
-			ok
-		end,
-                ETag
-	catch
-	    _ ->
-		WarningText = "Error updating this city/" ++
-		              "Erreur de mise à jour de cette ville",
-		twitter_status:weather_update(Site#site.city,
-					      Site#site.province,
-					      WarningText),
-		State#state.etag
-        end,
+		    {ok, SiteData, ETag} ->			
+			WxPid ! {updated, ETag, SiteData}
+		end
+	end,
+
+    Pid = spawn_link(F),
+    {NewETag, NewEvents, NewInterval} =
+	receive
+	    unmodified -> {State#state.etag,
+			   State#state.events,
+			   lists:min([State#state.interval*2,
+				      ?MAX_UPDATE_INTERVAL])};
+
+	    {updated, ETag, SiteData} ->
+		case {State#state.etag, extract_events(SiteData)} of
+		    {undefined, []}     -> {ETag, [],     ?MAX_UPDATE_INTERVAL};
+		    {undefined, Events} -> {ETag, Events, ?MIN_UPDATE_INTERVAL};
+
+		    {_, Events} when Events =:= State#state.events ->
+			{ETag, Events,
+			 lists:min([State#state.interval*2,
+				    ?MAX_UPDATE_INTERVAL])};
+
+		    {_, Events} ->
+			lists:foreach(
+			  fun(E) ->
+				  EventText = E#event.description,
+				  twitter_status:weather_update(Site#site.city,
+								Site#site.province,
+								EventText)
+			  end, Events),
+			{ETag, Events, ?MIN_UPDATE_INTERVAL}
+		end;
+	    
+	    {'EXIT', Pid, Error} ->
+		%% WarningText ="Error updating this city/" ++
+		%%	      "Erreur de mise à  jour de cette ville",
+		%% twitter_status:weather_update(Site#site.city,
+		%%		      	       Site#site.province,
+		%%			       WarningText),
+		error_logger:error_msg("Error updating ~s, ~s: ~p~n", 
+				       [Site#site.city,
+					Site#site.province,
+					Error]),
+
+		{State#state.etag, State#state.events, ?MIN_UPDATE_INTERVAL}
+	end,
     
-    set_timer(State#state.interval),
-    erlang:garbage_collect(),
-    {noreply, State#state{etag=NewETag}}.
+    error_logger:info_msg("~s, ~s updated; next in ~p minutes~n",
+			  [Site#site.city, Site#site.province,
+			   NewInterval div (1000*60)]),
+    set_timer(NewInterval),
+    {noreply, State#state{etag=NewETag,
+			  events=NewEvents,
+			  interval=NewInterval}}.
+    
 
 %%--------------------------------------------------------------------
 %% Function: handle_info(Info, State) -> {noreply, State} |
@@ -132,17 +169,15 @@ code_change(_OldVsn, State, _Extra) ->
 set_timer(Interval) ->
     timer:apply_after(Interval, gen_server, cast, [self(), update]).
     
-process_data(Site, SiteData) ->
-    Events = SiteData#sitedata.events,
-    AllEvents = Events#events.watches ++ Events#events.warnings ++ Events#events.ended,    
-    
-    lists:foreach(fun(#event{description=Desc}) ->
-                      % Don't include "CONTINUED" messages
-                      case (string:str(Desc, "CONTINUED") /= 0) or (string:str(Desc, "MAINTENU") /= 0) of
-                          true -> ok;
-                          _ ->
-                              twitter_status:weather_update(Site#site.city,
-                                                            Site#site.province,
-                                                            Desc)
-                      end
-                  end, AllEvents).
+extract_events(SiteData) ->
+    Events    = SiteData#sitedata.events,
+    AllEvents = Events#events.watches ++
+	        Events#events.warnings ++
+	        Events#events.ended,    
+
+    %% Don't include "CONTINUED" messages    
+    lists:filter(
+      fun(#event{description=Desc}) ->
+	      ((string:str(Desc, "CONTINUED") =:= 0) and
+	       (string:str(Desc, "MAINTENU")  =:= 0))
+      end, AllEvents).
