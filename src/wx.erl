@@ -126,6 +126,11 @@ handle_cast(update, State) ->
 					Error]),
 
 		{State#state.etag, State#state.events, ?MIN_UPDATE_INTERVAL}
+
+	after 5000 ->
+		error_logger:info_msg("~s, ~s: Timeout waiting for Environment Canada~n", State#site.city, State#site.province),
+		exit(Pid, timeout),
+		timer:apply_after(5*60*1000, gen_server, cast, [self(), update])
 	end,
     
     error_logger:info_msg("~s, ~s updated; next in ~p minutes~n",
