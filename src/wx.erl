@@ -128,18 +128,25 @@ handle_cast(update, State) ->
 		{State#state.etag, State#state.events, ?MIN_UPDATE_INTERVAL}
 
 	after 5000 ->
-		error_logger:info_msg("~s, ~s: Timeout waiting for Environment Canada~n", State#site.city, State#site.province),
+		error_logger:warning_msg("~s, ~s timed out; will try again in ~p minutes~n",
+					 [Site#site.city, Site#site.province,
+					  ?MIN_UPDATE_INTERVAL div (1000*60)]),
 		exit(Pid, timeout),
-		timer:apply_after(5*60*1000, gen_server, cast, [self(), update])
+		set_timer(?MIN_UPDATE_INTERVAL),
+		{undefined, undefined, undefined}
 	end,
     
-    error_logger:info_msg("~s, ~s updated; next in ~p minutes~n",
-			  [Site#site.city, Site#site.province,
-			   NewInterval div (1000*60)]),
-    set_timer(NewInterval),
-    {noreply, State#state{etag=NewETag,
-			  events=NewEvents,
-			  interval=NewInterval}}.
+    case NewInterval of
+	undefined -> {noreply, State};
+	_ -> 
+	    error_logger:info_msg("~s, ~s updated; next in ~p minutes~n",
+				  [Site#site.city, Site#site.province,
+				   NewInterval div (1000*60)]),
+	    set_timer(NewInterval),
+	    {noreply, State#state{etag=NewETag,
+				  events=NewEvents,
+				  interval=NewInterval}}
+    end.
     
 
 %%--------------------------------------------------------------------
