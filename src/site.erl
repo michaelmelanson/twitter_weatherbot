@@ -16,7 +16,7 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--record(state, {site, interval, events, etag}).
+-record(state, {site, interval, events, etag, timer}).
 
 -include("envcan_api.hrl").
 
@@ -96,8 +96,6 @@ handle_cast(update, State) ->
             case {State#state.etag, extract_events(SiteData)} of
                 {undefined, []}     -> {ETag, [],     ?MAX_UPDATE_INTERVAL};
                 {undefined, Events} ->
-                    % First update -- send them along
-                    post_events(Site, Events),
                     {ETag, Events, ?MIN_UPDATE_INTERVAL};
 
                 {_, Events} when Events =:= State#state.events ->

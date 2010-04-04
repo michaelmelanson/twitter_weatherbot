@@ -95,7 +95,7 @@ handle_cast({update, City, Notice}, State) ->
         case lists:keysearch(Notice, 1, State#state.updates) of
             false -> {Notice, [City]};
             {value, {Notice, Cities}} ->
-                case lists:member(City) of
+                case lists:member(City, Cities) of
                     true -> {Notice, Cities};
                     false -> {Notice, Cities ++ [City]}
                 end
