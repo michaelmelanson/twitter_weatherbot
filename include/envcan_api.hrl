@@ -40,7 +40,8 @@
                      visibility,
                      relativeHumidity,
                      wind,
-		     windChill}).
+            		     windChill,
+            		     iconCode}).
 -record(station, {code, lat, lon, name}).
 -record(wind, {speed, gust, direction, bearing}).
 
@@ -57,18 +58,18 @@
                    abbreviatedForecast,
                    temperatures,
                    winds,
-		   windChill,
+            		   windChill,
                    precipitation,
                    frost,
                    visibility,
                    uv,
                    relativeHumidity,
                    comfort,
-		   snowLevel}).
+            		   snowLevel}).
                    
 -record(period, {name, day}).
 -record(winds, {summary, readings=[]}).
--record(abbreviatedForecast, {summary, pop}).
+-record(abbreviatedForecast, {summary, pop, iconCode}).
 -record(precipitation, {summary, types=[], accumulation}).
 -record(frost, {summary}).
 -record(accumulation, {name, amount}).
@@ -87,3 +88,4 @@
                   extremeRainfall, extremeSnowfall, extremePrecipitation,
                   extremeSnowOnGround,
                   pop}).
+-record(iconCode, {format, code}).

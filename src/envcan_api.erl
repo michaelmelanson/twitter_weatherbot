@@ -13,7 +13,7 @@
 -include("envcan_api.hrl").
 -include("xmerl.hrl").
 
--define(BASE_URL, "http://dd.weatheroffice.ec.gc.ca/EC_sites/xml").
+-define(BASE_URL, "http://dd.weatheroffice.ec.gc.ca/citypage_weather/xml").
 -define(HEADERS, [{"User-Agent", "Twitter: @wx_canada"},
                   {"X-Contact-Info", "Michael Melanson <michael@michaelmelanson.net"}]).
 
@@ -317,6 +317,9 @@ parse_conditions(Xml) ->
         (#xmlElement{name=windChill, content=[#xmlText{value=Value}]}, Acc) ->
             Acc#conditions{windChill=Value};
             
+        (#xmlElement{name=iconCode, attributes=Attributes, content=Content}, Acc) ->
+            Acc#conditions{iconCode=parse_iconCode(Attributes, Content)};
+            
         (#xmlText{}, Acc) -> Acc
     end,
     
@@ -520,6 +523,9 @@ parse_abbreviatedForecast(Xml) ->
                 [#xmlText{value=Value}] -> Acc#abbreviatedForecast{pop=Value}
             end;
             
+        (#xmlElement{name=iconCode, attributes=Attributes, content=Content}, Acc) ->
+          Acc#abbreviatedForecast{iconCode=parse_iconCode(Attributes, Content)};
+            
         (#xmlText{}, Acc) -> Acc
     end,
     
@@ -542,7 +548,9 @@ parse_precipitation(Xml) ->
             case Content of
                 [] -> Acc;
                 [#xmlText{value=Value}] ->
-                    NewTypes = Acc#precipitation.types ++ [#precipType{startHour=Start, endHour=End, type=Value}],
+                    NewTypes = Acc#precipitation.types ++
+                               [#precipType{startHour=Start, endHour=End,
+                                            type=Value}],
                     Acc#precipitation{types=NewTypes}
             end;
 
@@ -764,6 +772,17 @@ parse_almanac(Xml) ->
     
     lists:foldl(F, #almanac{}, Xml).
 
+
+parse_iconCode(Attributes, Contents) ->
+    F = fun
+        (#xmlAttribute{name=format, value=Format}, Acc) ->
+            Acc#iconCode{format=Format};
+            
+        (#xmlText{value=Code}, Acc) ->
+            Acc#iconCode{code=Code}
+    end,
+    
+    lists:foldl(F, #iconCode{}, Attributes++Contents).
 
     
 
