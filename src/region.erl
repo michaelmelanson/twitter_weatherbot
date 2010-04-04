@@ -94,7 +94,11 @@ handle_cast({update, City, Notice}, State) ->
     NewUpdate =
         case lists:keysearch(Notice, 1, State#state.updates) of
             false -> {Notice, [City]};
-            {value, {Notice, Cities}} -> {Notice, Cities ++ [City]}
+            {value, {Notice, Cities}} ->
+                case lists:member(City) of
+                    true -> {Notice, Cities};
+                    false -> {Notice, Cities ++ [City]}
+                end
         end,
         
     NewUpdates = lists:keystore(Notice, 1, State#state.updates, NewUpdate),
