@@ -122,9 +122,8 @@ post_to_twitter(AccountName, Status) ->
 
     error_logger:info_msg("Updating @~s: ~p~n", [AccountName, Status]),
 
-    %Reply = twitter_client:call(AccountName, status_update, 
-    %                            [{"status", Status}]), 
-    Reply = #status{},
+    Reply = twitter_client:call(AccountName, status_update, 
+                                [{"status", Status}]), 
     case Reply of
       [#status{}] ->
         error_logger:info_msg("Twitter update successful~n");
