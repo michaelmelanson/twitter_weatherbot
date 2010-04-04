@@ -1,24 +1,25 @@
 %%%-------------------------------------------------------------------
-%%% File    : http_master.erl
+%%% File    : region.erl
 %%% Author  : Michael Melanson
-%%% Description : 
-%%%
-%%% Created : 2008-06-17 by Michael Melanson
+%%% Description : Monitor process for a region (province/territory)
 %%%-------------------------------------------------------------------
--module(http_master).
+-module(region).
 
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, available/0, request/1]).
+-export([start_link/2, update/3]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--record(state, {worker_queue, task_queue}).
+-record(state, {name, account, updates}).
+
 
 -define(SERVER, ?MODULE).
+-define(UPDATE_INTERVAL, 1000*60*5).  %% Five minutes
+
 
 %%====================================================================
 %% API
@@ -27,8 +28,17 @@
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
 %%--------------------------------------------------------------------
-start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+start_link(Name, Account) ->
+    gen_server:start_link(?MODULE, [Name, Account], []).
+
+update(City, Region, Update) ->
+    Children = supervisor:which_children(region_sup),
+    
+    lists:map(fun({ChildRegion, Pid, _, _}) when Region =:= ChildRegion ->
+                  gen_server:cast(Pid, {update, City, Update});
+                 (_) -> undefined
+              end, Children),
+    ok.
 
 %%====================================================================
 %% gen_server callbacks
@@ -41,15 +51,12 @@ start_link() ->
 %%                         {stop, Reason}
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
-init([]) ->
-    {ok, #state{worker_queue = queue:new(),
-                task_queue = queue:new()}}.
+init([Name, Account]) ->
+    process_flag(trap_exit, true),
+    error_logger:info_msg("~s: started~n", [Name]),
 
-available() ->
-    gen_server:cast(?SERVER, {insert_worker, self()}).
-    
-request(Task) ->
-    gen_server:call(?SERVER, {insert_task, Task}, infinity).
+    set_timer(?UPDATE_INTERVAL),
+    {ok, #state{name=Name, account=Account, updates=[]}}.
 
 %%--------------------------------------------------------------------
 %% Function: handle_call(Request, From, State) -> {reply, Reply, State} |
@@ -60,35 +67,39 @@ request(Task) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
-handle_call({insert_task, Task}, From, State) ->
-    case queue:is_empty(State#state.worker_queue) of
-        true ->
-            Q2 = queue:in_r({Task, From}, State#state.task_queue),
-            {noreply, State#state{task_queue=Q2}};
-            
-        false ->
-            {{value, Worker}, Q2} = queue:out(State#state.worker_queue),
-            gen_server:cast(Worker, {Task, From}),
-            {noreply, State#state{worker_queue=Q2}}
-    end.
+handle_call(_Request, _From, State) ->
+    Reply = ok,
+    {reply, Reply, State}.
+
 %%--------------------------------------------------------------------
 %% Function: handle_cast(Msg, State) -> {noreply, State} |
 %%                                      {noreply, State, Timeout} |
 %%                                      {stop, Reason, State}
 %% Description: Handling cast messages
 %%--------------------------------------------------------------------
-handle_cast({insert_worker, Worker}, State) ->
-    case queue:is_empty(State#state.task_queue) of
-        true ->
-            Q2 = queue:in_r(Worker, State#state.worker_queue),
-            {noreply, State#state{worker_queue=Q2}};
-
-        false ->
-            {{value, {Task, From}}, Q2} = queue:out(State#state.task_queue),
-            gen_server:cast(Worker, {Task, From}),
-            {noreply, State#state{task_queue=Q2}}
-    end.
+handle_cast(post_updates, State) ->
+    lists:map(fun({Update, Sites}) ->
+        SiteList = string:join(Sites, ", "),
+        Tweet = Update ++ " for " ++ SiteList,
+        twitter_status:tweet(State#state.name, State#state.account, Tweet)
+    end, State#state.updates),
+            
+    set_timer(?UPDATE_INTERVAL),
+    {noreply, State#state{updates=[]}};
     
+handle_cast({update, City, Notice}, State) ->
+    error_logger:info_msg("~s: Received update for ~s: ~s~n",
+                          [State#state.name, City, Notice]),
+                          
+    NewUpdate =
+        case lists:keysearch(Notice, 1, State#state.updates) of
+            false -> {Notice, [City]};
+            {value, {Notice, Cities}} -> {Notice, Cities ++ [City]}
+        end,
+        
+    NewUpdates = lists:keystore(Notice, 1, State#state.updates, NewUpdate),
+    {noreply, State#state{updates=NewUpdates}}.
+
 %%--------------------------------------------------------------------
 %% Function: handle_info(Info, State) -> {noreply, State} |
 %%                                       {noreply, State, Timeout} |
@@ -118,3 +129,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
+set_timer(Interval) ->
+    timer:apply_after(Interval, gen_server, cast, [self(), post_updates]).
+    

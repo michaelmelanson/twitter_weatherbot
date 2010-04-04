@@ -1,11 +1,11 @@
 %%%-------------------------------------------------------------------
-%%% File    : wx_sup.erl
+%%% File    : region_sup.erl
 %%% Author  : Michael Melanson
 %%% Description : 
 %%%
 %%% Created : 2008-06-16 by Michael Melanson
 %%%-------------------------------------------------------------------
--module(wx_sup).
+-module(region_sup).
 
 -behaviour(supervisor).
 
@@ -39,17 +39,26 @@ start_link() ->
 %% to find out about restart strategy, maximum restart frequency and child 
 %% specifications.
 %%--------------------------------------------------------------------
-init([]) ->
-    error_logger:info_msg("Retrieving site list from Environment Canada...~n"),
-    {ok, Sites} = envcan_api:list(),
-    error_logger:info_msg("There are a total of ~p sites~n",
-			  [length(Sites)]),
+init([]) ->                            
+    Regions = [{"BC", "BC",            "wx_bc"},          
+               {"AB", "Alberta",       "wx_alberta"},
+               {"SK", "Sasketchewan",  "wx_saskatchewan"},
+               {"MB", "Manitoba",      "wx_manitoba"},
+               {"ON", "Ontario",       "wx_ontario"},
+               {"QC", "Quebec",        "wx_quebec"},
+               {"NB", "New Brunswick", "wx_newbrunswick"},
+               {"PE", "PEI",           "wx_pei"},
+               {"NS", "Nova Scotia",   "wx_novascotia"},
+               {"NL", "Newfoundland",  "wx_newfoundland"},
+               {"YK", "Yukon",         "wx_nunavut"},
+               {"NT", "NWT",           "wx_nwt"},
+               {"NU", "Nunavut",       "wx_yukon"}],
 
+    Children = lists:map(fun({Region, Name, Account}) ->
+                            {Region, {region, start_link, [Name, Account]},
+                             permanent, 2000, worker, [region]}
+                         end, Regions),
 
-    Children = lists:map(fun(Site) ->
-                            {Site, {wx, start_link, [Site]},
-                             permanent, 2000, worker, [wx]}
-                         end, Sites),
     case supervisor:check_childspecs(Children) of
         ok -> {ok,{{one_for_one,100,3}, Children}};
         {error, Error} ->

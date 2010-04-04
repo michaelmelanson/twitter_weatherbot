@@ -1,11 +1,11 @@
 %%%-------------------------------------------------------------------
-%%% File    : wx.erl
+%%% File    : site.erl
 %%% Author  : Michael Melanson
 %%% Description : Monitor process for a weather site
 %%%
 %%% Created : 2008-06-16 by Michael Melanson
 %%%-------------------------------------------------------------------
--module(wx).
+-module(site).
 
 -behaviour(gen_server).
 
@@ -88,47 +88,42 @@ handle_cast(update, State) ->
     Pid = spawn_link(F),
     {NewETag, NewEvents, NewInterval} =
 	receive
-	    unmodified -> {State#state.etag,
-			   State#state.events,
-			   lists:min([State#state.interval*2,
-				      ?MAX_UPDATE_INTERVAL])};
+        unmodified ->
+            {State#state.etag, State#state.events,
+             lists:min([State#state.interval*2, ?MAX_UPDATE_INTERVAL])};
 
-	    {updated, ETag, SiteData} ->
-		case {State#state.etag, extract_events(SiteData)} of
-		    {undefined, []}     -> {ETag, [],     ?MAX_UPDATE_INTERVAL};
-		    {undefined, Events} -> {ETag, Events, ?MIN_UPDATE_INTERVAL};
+        {updated, ETag, SiteData} ->
+            case {State#state.etag, extract_events(SiteData)} of
+                {undefined, []}     -> {ETag, [],     ?MAX_UPDATE_INTERVAL};
+                {undefined, Events} ->
+                    % First update -- send them along
+                    post_events(Site, Events),
+                    {ETag, Events, ?MIN_UPDATE_INTERVAL};
 
-		    {_, Events} when Events =:= State#state.events ->
-			{ETag, Events,
-			 lists:min([State#state.interval*2,
-				    ?MAX_UPDATE_INTERVAL])};
+                {_, Events} when Events =:= State#state.events ->
+                    {ETag, Events,
+                     lists:min([State#state.interval*2,
+                     ?MAX_UPDATE_INTERVAL])};
 
-		    {_, Events} ->
-			lists:foreach(
-			  fun(E) ->
-				  EventText = E#event.description,
-				  twitter_status:weather_update(Site#site.city,
-								Site#site.province,
-								EventText)
-			  end, Events),
-			{ETag, Events, ?MIN_UPDATE_INTERVAL}
-		end;
+                {_, Events} ->
+                    post_events(Site, Events),
+                    {ETag, Events, ?MIN_UPDATE_INTERVAL}
+            end;
 	    
 	    {'EXIT', Pid, Error} ->
-		%% WarningText ="Error updating this city/" ++
-		%%	      "Erreur de mise à  jour de cette ville",
-		%% twitter_status:weather_update(Site#site.city,
-		%%		      	       Site#site.province,
-		%%			       WarningText),
-		error_logger:error_msg("Error updating ~s, ~s: ~p~n", 
-				       [Site#site.city,
-					Site#site.province,
-					Error]),
+            %% WarningText ="Error updating this city/" ++
+            %%	      "Erreur de mise à  jour de cette ville",
+            %% twitter_status:weather_update(Site#site.city,
+            %%		      	       Site#site.province,
+            %%			       WarningText),
+            error_logger:error_msg("Error updating ~s, ~s: ~p~n", 
+                                   [Site#site.city, Site#site.province,
+                                    Error]),
 
-		{State#state.etag, State#state.events, ?MIN_UPDATE_INTERVAL}
+            {State#state.etag, State#state.events, ?MIN_UPDATE_INTERVAL}
 
 	after 5000 ->
-		error_logger:warning_msg("~s, ~s timed out; will try again in ~p minutes~n",
+		error_logger:warning_msg("~s, ~s timed out. Will try again in ~p minutes~n",
 					 [Site#site.city, Site#site.province,
 					  ?MIN_UPDATE_INTERVAL div (1000*60)]),
 		exit(Pid, timeout),
@@ -137,15 +132,16 @@ handle_cast(update, State) ->
 	end,
     
     case NewInterval of
-	undefined -> {noreply, State};
-	_ -> 
-	    error_logger:info_msg("~s, ~s updated; next in ~p minutes~n",
-				  [Site#site.city, Site#site.province,
-				   NewInterval div (1000*60)]),
-	    set_timer(NewInterval),
-	    {noreply, State#state{etag=NewETag,
-				  events=NewEvents,
-				  interval=NewInterval}}
+        undefined -> {noreply, State};
+        _ -> 
+            error_logger:info_msg("~s, ~s updated. Next update in ~p minutes.~n",
+                                 [Site#site.city, Site#site.province,
+                                  NewInterval div (1000*60)]),
+
+            set_timer(NewInterval),
+            {noreply, State#state{etag=NewETag,
+                                  events=NewEvents,
+                                  interval=NewInterval}}
     end.
     
 
@@ -184,8 +180,8 @@ set_timer(Interval) ->
 extract_events(SiteData) ->
     Events    = SiteData#sitedata.events,
     AllEvents = Events#events.watches ++
-	        Events#events.warnings ++
-	        Events#events.ended,    
+                Events#events.warnings ++
+                Events#events.ended,    
 
     %% Don't include "CONTINUED" messages    
     lists:filter(
@@ -193,3 +189,11 @@ extract_events(SiteData) ->
 	      ((string:str(Desc, "CONTINUED") =:= 0) and
 	       (string:str(Desc, "MAINTENU")  =:= 0))
       end, AllEvents).
+
+
+post_events(Site, Events) ->
+    lists:foreach(fun(E) ->
+                      EventText = E#event.description,
+                      region:update(Site#site.city, Site#site.province,
+                                    EventText)
+                  end, Events).

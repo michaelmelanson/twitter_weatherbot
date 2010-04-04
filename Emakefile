@@ -2,8 +2,10 @@
 
 {["src/weather_sup",
   "src/weather_app",
-  "src/wx",
-  "src/wx_sup",
+  "src/site",
+  "src/site_sup",
+  "src/region",
+  "src/region_sup",
   "src/httpc",
   "src/http_master",
   "src/http_sup",

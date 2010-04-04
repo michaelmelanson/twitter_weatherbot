@@ -8,14 +8,14 @@
 -module(envcan_api).
 
 %% API
--export([get/2, list/0]).
+-export([get/2, list/0, parse_response_data/1]).
 
 -include("envcan_api.hrl").
 -include("xmerl.hrl").
 
 -define(BASE_URL, "http://dd.weatheroffice.ec.gc.ca/citypage_weather/xml").
 -define(HEADERS, [{"User-Agent", "Twitter: @wx_canada"},
-                  {"X-Contact-Info", "Michael Melanson <michael@michaelmelanson.net"}]).
+                  {"X-Contact-Info", "Michael Melanson <michael@michaelmelanson.net>"}]).
 
 %%====================================================================
 %% API
@@ -29,13 +29,10 @@ get(Site, ETag) ->
         undefined ->  {make_data_uri(Site), ?HEADERS};
         _ -> {make_data_uri(Site), ?HEADERS ++ [{"If-None-Match", ETag}]}
     end,
-    
+
     case http_master:request(Request) of
         {ok, {{_, 200, _}, Headers, Body}} ->
-            {Parsed, []} = xmerl_scan:string(Body),
-
-            Content = Parsed#xmlElement.content,
-            SiteData = parse_sitedata(Content),
+            SiteData = parse_response_data(Body),
             {ok, SiteData, get_etag(Headers)};
         
         {ok, {{_, 304, _}, _Headers, _Body}} ->
@@ -55,6 +52,12 @@ list() ->
             Content = Parsed#xmlElement.content,
             {ok, parse_sitelist(Content)}
     end.
+    
+parse_response_data(Body) ->
+    {Parsed, _} = xmerl_scan:string(Body),
+    Content = Parsed#xmlElement.content,
+    parse_sitedata(Content).
+
 
 %%====================================================================
 %% Internal functions

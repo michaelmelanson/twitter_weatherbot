@@ -10,7 +10,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, weather_update/3]).
+-export([start_link/0, tweet/3]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -22,7 +22,7 @@
 
 -define(SERVER, ?MODULE).
 
--define(TWITTER_USERNAME, "wx_canada").
+-define(NATIONAL_ACCOUNT, "wx_canada").
 -define(TWITTER_PASSWORD, "pleasedonthackme").
 
 %%====================================================================
@@ -35,8 +35,8 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
-weather_update(City, Province, Message) ->
-    gen_server:cast(?SERVER, {weather_update, City, Province, Message}).
+tweet(Province, Account, Tweet) ->
+    gen_server:cast(?SERVER, {tweet, Province, Account, Tweet}).
 
 %%====================================================================
 %% gen_server callbacks
@@ -51,7 +51,7 @@ weather_update(City, Province, Message) ->
 %%--------------------------------------------------------------------
 init([]) ->
     twitter_client:start(),
-    twitter_client:add_session(?TWITTER_USERNAME, ?TWITTER_PASSWORD),
+    twitter_client:add_session(?NATIONAL_ACCOUNT, ?TWITTER_PASSWORD),
     
     {ok, #state{}}.
     
@@ -74,29 +74,9 @@ handle_call(_Request, _From, State) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling cast messages
 %%--------------------------------------------------------------------
-handle_cast({weather_update, City, Province, Message}, State) ->
-    Status = City ++ ", " ++ Province ++ ": " ++ Message,
-
-    Delay = twitter_client:delay(),
-    case Delay of
-	0 -> ok; % no throttling needed
-	_ ->
-	    error_logger:info_msg(
-	      "Throttling: Waiting ~p seconds to update Twitter.~n",
-	      [Delay]),
-	    timer:sleep(Delay*1000)
-    end,
-
-    error_logger:info_msg("Updating Twitter: ~p~n", [Status]),
-    Reply = twitter_client:call(?TWITTER_USERNAME, status_update, 
-				[{"status", Status}]), 
-    case Reply of
-	[#status{}] ->
-	    error_logger:info_msg("Twitter update successful~n");
-	_ ->
-	    error_logger:error_msg("Update failed: ~p~n", [Reply])
-    end,
-
+handle_cast({tweet, Province, _ProvinceAccount, Tweet}, State) ->
+    post_to_twitter(?NATIONAL_ACCOUNT, Province ++ ": " ++ Tweet),
+    %post_to_twitter(ProvinceAccount, Tweet),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -128,3 +108,34 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
+post_to_twitter(AccountName, Status) ->
+    Delay = twitter_client:delay(),
+    case Delay of
+      0 -> ok; % no throttling needed
+      _ ->
+        error_logger:info_msg(
+            "Throttling: Waiting ~p seconds to update Twitter.~n",
+            [Delay]),
+
+        timer:sleep(Delay*1000)
+    end,
+
+    error_logger:info_msg("Updating @~s: ~p~n", [AccountName, Status]),
+
+    %Reply = twitter_client:call(AccountName, status_update, 
+    %                            [{"status", Status}]), 
+    Reply = #status{},
+    case Reply of
+      [#status{}] ->
+        error_logger:info_msg("Twitter update successful~n");
+      _ ->
+        error_logger:error_msg("Update failed: ~p~n", [Reply])
+    end,
+    
+    ok.
+    
+all_accounts() -> ["wx_canada", "wx_bc", "wx_alberta", "wx_sasatchewan",
+                   "wx_manitoba", "wx_ontario", "wx_quebec", "wx_newbrunswick",
+                   "wx_pei", "wx_novascotia", "wx_newfoundland", "wx_nunavut",
+                   "wx_nwt", "wx_yukon"].
+                   

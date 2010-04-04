@@ -1,11 +1,11 @@
 %%%-------------------------------------------------------------------
-%%% File    : weather_sup.erl
+%%% File    : site_sup.erl
 %%% Author  : Michael Melanson
-%%% Description : Top supervisor
+%%% Description : 
 %%%
 %%% Created : 2008-06-16 by Michael Melanson
 %%%-------------------------------------------------------------------
--module(weather_sup).
+-module(site_sup).
 
 -behaviour(supervisor).
 
@@ -40,12 +40,24 @@ start_link() ->
 %% specifications.
 %%--------------------------------------------------------------------
 init([]) ->
-    Children = [{http_sup,       {http_sup,      start_link,[2]},permanent,2000,supervisor,[http_sup]},
-                {twitter_status, {twitter_status,start_link,[]}, permanent,2000,worker,    [twitter_status]},
-                {site_sup,       {site_sup,      start_link,[]}, permanent,2000,supervisor,[site_sup]},
-                {region_sup,     {region_sup,    start_link,[]}, permanent,2000,supervisor,[region_sup]}],
+    error_logger:info_msg("Retrieving site list from Environment Canada...~n"),
+    {ok, Sites} = envcan_api:list(),
+    error_logger:info_msg("There are a total of ~p sites~n",
+			  [length(Sites)]),
 
-    {ok,{{one_for_all,2,3}, Children}}.
+
+    Children = lists:map(fun(Site) ->
+                            {Site, {site, start_link, [Site]},
+                             permanent, 2000, worker, [site]}
+                         end, Sites),
+                         
+    case supervisor:check_childspecs(Children) of
+        ok -> {ok,{{one_for_one,100,3}, Children}};
+        {error, Error} ->
+            error_logger:info_msg("Invalid child specifications: ~p~n",
+				  [Error]),
+            {error, Error}
+    end.
 
 %%====================================================================
 %% Internal functions
