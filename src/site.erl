@@ -21,8 +21,8 @@
 -include("envcan_api.hrl").
 
 -define(SERVER, ?MODULE).
--define(MIN_UPDATE_INTERVAL, 1000*60*5).  %% Five minutes
--define(MAX_UPDATE_INTERVAL, 1000*60*60). %% One hour
+-define(MIN_UPDATE_INTERVAL, 1000*60*1).  %% Five minutes
+-define(MAX_UPDATE_INTERVAL, 1000*60*30). %% One hour
 
 %%====================================================================
 %% API
