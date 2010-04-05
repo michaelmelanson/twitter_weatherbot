@@ -78,10 +78,8 @@ handle_cast(update, State) ->
 
     F = fun() ->
 		case envcan_api:get(State#state.site, State#state.etag) of
-		    unmodified -> WxPid ! unmodified;
-        
-		    {ok, SiteData, ETag} ->			
-			WxPid ! {updated, ETag, SiteData}
+		    unmodified           -> WxPid ! unmodified;
+		    {ok, SiteData, ETag} -> WxPid ! {updated, ETag, SiteData}
 		end
 	end,
 

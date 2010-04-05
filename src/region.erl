@@ -79,8 +79,10 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast(post_updates, State) ->
     lists:map(fun({Update, Sites}) ->
+        HashtagSet = sets:union(lists:map(fun(Site) -> sets:from_list(hashtags(Site)) end, Sites)),
+        Hashtags = string:join(sets:to_list(HashtagSet), " "),
         SiteList = string:join(Sites, ", "),
-        Tweet = Update ++ " for " ++ SiteList,
+        Tweet = Update ++ " for " ++ SiteList ++ " " ++ Hashtags,
         twitter_status:tweet(State#state.name, State#state.account, Tweet)
     end, State#state.updates),
             
@@ -135,4 +137,14 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 set_timer(Interval) ->
     timer:apply_after(Interval, gen_server, cast, [self(), post_updates]).
-    
+
+hashtags("Vancouver") -> ["#vancouver"];
+hashtags("Calgary") -> ["#calgary"];
+hashtags("Regina") -> ["#regina"];
+hashtags("Winnipeg") -> ["#winnipeg"];
+hashtags("Ottawa (Kanata - Orléans)")    -> ["#ottawa"];
+hashtags("Ottawa (Richmond - Metcalfe)") -> ["#ottawa"];
+hashtags("Toronto") -> ["#toronto"];
+hashtags("Montréal") -> ["#montreal"];
+hashtags("Halifax") -> ["#halifax"];
+hashtags(_) -> [].
