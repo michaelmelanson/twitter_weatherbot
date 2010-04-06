@@ -98,7 +98,7 @@ handle_cast({update, City, Notice}, State) ->
         undefined -> % new batch
             Timeout = ?MIN_AGGREGATE_INTERVAL,
             error_logger:info_msg("This is a new batch for ~s. Will post in ~p minutes unless more are received.~n",
-                                  [State#state.name, Timeout]),
+                                  [State#state.name, Timeout div (1000*60)]),
             {noreply, State#state{updates=NewUpdates, batch_start=Now}, Timeout};
              
         BatchStart -> % there are other messages in this batch            
