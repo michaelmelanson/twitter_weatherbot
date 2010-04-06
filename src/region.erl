@@ -150,6 +150,8 @@ hashtags("Vancouver") -> ["#vancouver"];
 hashtags("Calgary") -> ["#calgary"];
 hashtags("Regina") -> ["#regina"];
 hashtags("Winnipeg") -> ["#winnipeg"];
+hashtags("London") -> ["#ldnont"];
+hashtags("Guelph") -> ["#guelph"];
 hashtags("Ottawa (Kanata - Orléans)")    -> ["#ottawa"];
 hashtags("Ottawa (Richmond - Metcalfe)") -> ["#ottawa"];
 hashtags("Toronto") -> ["#toronto"];
