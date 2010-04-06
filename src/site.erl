@@ -119,11 +119,15 @@ handle_cast(update, State) ->
             {State#state.etag, State#state.events, ?MIN_UPDATE_INTERVAL}
 
 	after 5000 ->
+	    % We may be bunching up requests, overloading the site. Let's let it
+	    % cool off a bit.
+	    Delay = random:uniform(?MAX_UPDATE_INTERVAL),
+        
 		error_logger:warning_msg("~s, ~s timed out. Will try again in ~p minutes~n",
 					 [Site#site.city, Site#site.province,
-					  ?MIN_UPDATE_INTERVAL div (1000*60)]),
+					  Delay div (1000*60)]),
 		exit(Pid, timeout),
-		set_timer(?MIN_UPDATE_INTERVAL),
+		set_timer(Delay),
 		{undefined, undefined, undefined}
 	end,
     
