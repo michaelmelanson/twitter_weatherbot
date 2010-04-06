@@ -54,8 +54,6 @@ update(City, Region, Update) ->
 init([Name, Account]) ->
     process_flag(trap_exit, true),
     error_logger:info_msg("~s: started~n", [Name]),
-
-    set_timer(?UPDATE_INTERVAL),
     {ok, #state{name=Name, account=Account, updates=[]}}.
 
 %%--------------------------------------------------------------------
@@ -77,18 +75,6 @@ handle_call(_Request, _From, State) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling cast messages
 %%--------------------------------------------------------------------
-handle_cast(post_updates, State) ->
-    lists:map(fun({Update, Sites}) ->
-        HashtagSet = sets:union(lists:map(fun(Site) -> sets:from_list(hashtags(Site)) end, Sites)),
-        Hashtags = string:join(sets:to_list(HashtagSet), " "),
-        SiteList = string:join(Sites, ", "),
-        Tweet = Update ++ " for " ++ SiteList ++ " " ++ Hashtags,
-        twitter_status:tweet(State#state.name, State#state.account, Tweet)
-    end, State#state.updates),
-            
-    set_timer(?UPDATE_INTERVAL),
-    {noreply, State#state{updates=[]}};
-    
 handle_cast({update, City, Notice}, State) ->
     error_logger:info_msg("~s: Received update for ~s: ~s~n",
                           [State#state.name, City, Notice]),
@@ -104,7 +90,7 @@ handle_cast({update, City, Notice}, State) ->
         end,
         
     NewUpdates = lists:keystore(Notice, 1, State#state.updates, NewUpdate),
-    {noreply, State#state{updates=NewUpdates}}.
+    {noreply, State#state{updates=NewUpdates}, ?UPDATE_INTERVAL}.
 
 %%--------------------------------------------------------------------
 %% Function: handle_info(Info, State) -> {noreply, State} |
@@ -112,7 +98,15 @@ handle_cast({update, City, Notice}, State) ->
 %%                                       {stop, Reason, State}
 %% Description: Handling all non call/cast messages
 %%--------------------------------------------------------------------
-handle_info(_Info, State) ->
+handle_info(timeout, State) ->
+    lists:map(fun({Update, Sites}) ->
+        HashtagSet = sets:union(lists:map(fun(Site) -> sets:from_list(hashtags(Site)) end, Sites)),
+        Hashtags = string:join(sets:to_list(HashtagSet), " "),
+        SiteList = string:join(Sites, ", "),
+        Tweet = Update ++ " for " ++ SiteList ++ " " ++ Hashtags,
+        twitter_status:tweet(State#state.name, State#state.account, Tweet)
+    end, State#state.updates),
+    
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -135,9 +129,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
-set_timer(Interval) ->
-    timer:apply_after(Interval, gen_server, cast, [self(), post_updates]).
-
 hashtags("Vancouver") -> ["#vancouver"];
 hashtags("Calgary") -> ["#calgary"];
 hashtags("Regina") -> ["#regina"];
