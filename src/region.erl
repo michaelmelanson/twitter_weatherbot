@@ -18,7 +18,7 @@
 
 
 -define(SERVER, ?MODULE).
--define(UPDATE_INTERVAL, 1000*60*10).  %% Five minutes
+-define(UPDATE_INTERVAL, 1000*60*10).
 
 
 %%====================================================================
