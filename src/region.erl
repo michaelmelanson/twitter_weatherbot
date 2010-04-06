@@ -96,11 +96,16 @@ handle_cast({update, City, Notice}, State) ->
     
     case State#state.batch_start of
         undefined -> % new batch
-            {noreply, State#state{updates=NewUpdates, batch_start=Now}, ?MIN_AGGREGATE_INTERVAL};
+            Timeout = ?MIN_AGGREGATE_INTERVAL,
+            error_logger:info_msg("This is a new batch for ~s. Will post in ~p minutes unless more are received.~n",
+                                  [State#state.name, Timeout]),
+            {noreply, State#state{updates=NewUpdates, batch_start=Now}, Timeout};
              
         BatchStart -> % there are other messages in this batch            
             Elapsed = Now - BatchStart,
             Timeout = lists:min([?MIN_AGGREGATE_INTERVAL, ?MAX_AGGREGATE_INTERVAL-Elapsed]),
+            error_logger:info_msg("This continues a batch started ~p minutes ago for ~s. Will post in ~p minutes unless more are received.~n",
+                                  [Elapsed div (1000*60), State#state.name, Timeout div (1000*60)]),
             {noreply, State#state{updates=NewUpdates}, Timeout}
     end.
 
