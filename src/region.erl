@@ -14,11 +14,12 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--record(state, {name, account, updates}).
+-record(state, {name, account, updates, batch_start}).
 
 
 -define(SERVER, ?MODULE).
--define(UPDATE_INTERVAL, 1000*60*10).
+-define(MIN_AGGREGATE_INTERVAL, 1000*60*10). % Time to wait after an update
+-define(MAX_AGGREGATE_INTERVAL, 1000*60*30). % Maximum time to let messages wait
 
 
 %%====================================================================
@@ -90,7 +91,18 @@ handle_cast({update, City, Notice}, State) ->
         end,
         
     NewUpdates = lists:keystore(Notice, 1, State#state.updates, NewUpdate),
-    {noreply, State#state{updates=NewUpdates}, ?UPDATE_INTERVAL}.
+
+    Now = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
+    
+    case State#state.batch_start of
+        undefined -> % new batch
+            {noreply, State#state{updates=NewUpdates, batch_start=Now}, ?MIN_AGGREGATE_INTERVAL};
+             
+        BatchStart -> % there are other messages in this batch            
+            Elapsed = Now - BatchStart,
+            Timeout = lists:min([?MIN_AGGREGATE_INTERVAL, ?MAX_AGGREGATE_INTERVAL-Elapsed]),
+            {noreply, State#state{updates=NewUpdates}, Timeout}
+    end.
 
 %%--------------------------------------------------------------------
 %% Function: handle_info(Info, State) -> {noreply, State} |
@@ -107,7 +119,7 @@ handle_info(timeout, State) ->
         twitter_status:tweet(State#state.name, State#state.account, Tweet)
     end, State#state.updates),
     
-    {noreply, State}.
+    {noreply, State#state{updates=[], batch_start=undefined}}.
 
 %%--------------------------------------------------------------------
 %% Function: terminate(Reason, State) -> void()
