@@ -42,7 +42,7 @@ start_link() ->
 init([]) ->                            
     Regions = [{"BC", "BC",            "wx_bc"},          
                {"AB", "Alberta",       "wx_alberta"},
-               {"SK", "Sasketchewan",  "wx_saskatchewan"},
+               {"SK", "Saskatchewan",  "wx_saskatchewan"},
                {"MB", "Manitoba",      "wx_manitoba"},
                {"ON", "Ontario",       "wx_ontario"},
                {"QC", "Quebec",        "wx_quebec"},
